@@ -60,7 +60,8 @@ def main():
         else:
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
                 if mic_name in name:
-                    source = sr.Microphone(sample_rate=16000, device_index=index)
+                    source = sr.Microphone(
+                        sample_rate=16000, device_index=index)
                     break
     else:
         source = sr.Microphone(sample_rate=16000)
@@ -69,9 +70,10 @@ def main():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     record_timeout = args.record_timeout
     phrase_timeout = args.phrase_timeout
-    args.use_openai_api=True
+    args.use_openai_api = True
 
-    temp_file = NamedTemporaryFile(suffix='.wav').name
+    # temp_file = NamedTemporaryFile(suffix='.wav').name
+    temp_file = "temp_file.wav"
     transcription = ['']
 
     with source:
@@ -88,15 +90,27 @@ def main():
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
-    recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
+    recorder.listen_in_background(
+        source, record_callback, phrase_time_limit=record_timeout)
 
     # Cue the user that we're ready to go.
     print("Model loaded.\n")
+
+    phrase_complete = False
 
     while True:
         try:
             now = datetime.utcnow()
             # Pull raw recorded audio from the queue.
+            if phrase_complete:
+                with open(temp_file, 'rb') as f:
+                    result = openai.Audio.transcribe("whisper-1", f)
+                    print(result)
+
+                text = result['text'].strip()
+                transcription.append(text)
+                print(text)
+
             if not data_queue.empty():
                 phrase_complete = False
                 # If enough time has passed between recordings, consider the phrase complete.
@@ -113,7 +127,8 @@ def main():
                     last_sample += data
 
                 # Use AudioData to convert the raw data to wav data.
-                audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                audio_data = sr.AudioData(
+                    last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.
@@ -125,13 +140,6 @@ def main():
                     print(result)
 
                 text = result['text'].strip()
-
-                # If we detected a pause between recordings, add a new item to our transcripion.
-                # Otherwise edit the existing one.
-                if phrase_complete:
-                    transcription.append(text)
-                else:
-                    transcription[-1] = text
 
                 # Clear the console to reprint the updated transcription.
                 os.system('cls' if os.name == 'nt' else 'clear')
@@ -149,6 +157,7 @@ def main():
     for line in transcription:
         print(line)
     print(transcription)
+
 
 if __name__ == "__main__":
     main()
