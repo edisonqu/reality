@@ -3,6 +3,7 @@
 import argparse
 import io
 import os
+from chromadb.utils.embedding_functions import CohereEmbeddingFunction
 import dotenv
 import speech_recognition as sr
 import openai
@@ -12,10 +13,12 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 from time import sleep
 from sys import platform
+import chromadb
+from chromadb.config import Settings
 
 phrase_time = None
 
-def main():
+def record():
     dotenv.load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="medium", help="Model to use",
@@ -47,6 +50,23 @@ def main():
     recorder.energy_threshold = args.energy_threshold
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
+
+    collection_name = "test_db"
+
+    COHERE_KEY = os.getenv("COHERE_KEY")
+
+    chroma_settings = Settings(
+        chroma_db_impl="duckdb+parquet",
+        # Optional, defaults to .chromadb/ in the current directory
+        persist_directory=".chromadb"
+    )
+    chromadb_client = chromadb.Client(chroma_settings)
+
+    cohere_ef = CohereEmbeddingFunction(
+        api_key=COHERE_KEY, model_name="large")
+
+    collection = chromadb_client.get_or_create_collection(
+        collection_name, embedding_function=cohere_ef)
 
     # Important for linux users.
     # Prevents permanent application hang and crash by using the wrong Microphone
@@ -104,6 +124,7 @@ def main():
         try:
             now = datetime.utcnow()
             # Pull raw recorded audio from the queue.
+
             if phrase_complete:
                 with open(temp_file, 'rb') as f:
                     result = openai.Audio.transcribe("whisper-1", f)
@@ -115,11 +136,13 @@ def main():
                 phrase_complete = False
                 last_sample = bytes()
 
+
             if not data_queue.empty():
                 # If enough time has passed between recordings, consider the phrase complete.
                 # Clear the current working audio buffer to start over with the new data.
                 if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                     phrase_complete = True
+
 
                     while not data_queue.empty():
                         data = data_queue.get()
@@ -142,4 +165,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    record()
+
