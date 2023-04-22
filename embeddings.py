@@ -19,7 +19,10 @@ def query_db(collection: Collection, query_text: str, embedding_function: Embedd
         query_embeddings=query_embed,
         n_results=max(min(n_results, collection.count()), 1),
     )
+    return results
 
-    print(results)
+def query_all(collection: Collection):
 
+    results = collection.get()
+    # print(results)
     return results

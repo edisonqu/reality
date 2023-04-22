@@ -1,23 +1,70 @@
 from termcolor import colored
+from whisper import record
+from embeddings import *
+from database import *
 
+import openai
+import dotenv
+import os
+
+dotenv.load_dotenv()
+COHERE_KEY = os.getenv("COHERE_KEY")
+from chromadb.utils.embedding_functions import CohereEmbeddingFunction
+
+cohere_ef = CohereEmbeddingFunction(
+    api_key=COHERE_KEY, model_name="large")
+
+collection = database_initialization_and_collection(cohere_ef)
 def print_cool_colors(option):
     if option == 1:
-        print(colored("Hey, I am your AI assistant that can answer any questions you have about anything you've said today.", "red"))
-        print(colored("Please give me a few seconds to get set up...", "blue"))
+        print(colored("Hey, I am your AI assistant that can answer any questions you have about anything you've said today.", "blue"))
+        # print(colored("Please give me a few seconds to get set up...", "blue"))
+        # print()
+        # print()
+        # print(colored("READY!", "green"))
+        question = input("Ask it on the command line here --> ")
+        queries = int(input("How many results do you want? --> "))
 
-        # function that starts the QA
+        response = (query_db(collection=collection,query_text=question,embedding_function=cohere_ef,n_results=queries))
+        # print(response)
+        related_text = response.get('documents')[0]
+        time = response.get('ids')[0]
+        lowest_distance = response.get("distances")[0]
+
+        for i in range(len(related_text)):
+            print(colored(f"SEARCH RESPONSE #{i+1}",'blue'))
+            print(colored(f"Found related text:",'green'))
+            print(related_text[i],"with a distance score of ",lowest_distance[i], "and was generated on",time[i])
+
+        print(colored("Running through GPT to give an answer, give me a moment ...", "blue"))
+
+        import os
+        import openai
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "assistant", "content": f"You are a system that answers questions based on context provided to you and to provide an answer even if there is none. here is the quesiton: {question}, here is the context: {related_text[0]}"}
+            ]
+        )
+
+        print(completion.choices[0].message.content)
 
     elif option == 2:
         print(colored("Here are all the data that we have about you", "green"))
         print(colored("Please give me a few seconds to get set up...", "blue"))
-
-        # function that queries through the whole database and fetches_all
-
+        items = query_all(collection=database_initialization_and_collection(cohere_ef)).get('documents')
+        print(colored("Here are all the conversations you heard today.", "green"))
+        for item in items:
+            print("--------------------------------------------------------------------------------------------------------------------------------")
+            print(item)
+        print( "--------------------------------------------------------------------------------------------------------------------------------")
     elif option == 3:
         print(colored("Option 3: Recording Started", "yellow"))
         print(colored("Please give me a few seconds to get set up...", "blue"))
 
-        #function to the start the whole recording proccess
+        record(cohere_ef)
 
     else:
         print(colored("Invalid option, input numbers only from 1-3.", "red"))

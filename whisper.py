@@ -24,7 +24,7 @@ MAX_BYTE_SIZE = 1e7
 TEMP_DIR = ".note_files/"
 
 
-def record():
+def record(cohere_ef):
     dotenv.load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="medium", help="Model to use",
@@ -37,7 +37,7 @@ def record():
                         help="Energy level for mic to detect.", type=int)
     parser.add_argument("--record_timeout", default=6,
                         help="How real time the recording is in seconds.", type=float)
-    parser.add_argument("--phrase_timeout", default=15,
+    parser.add_argument("--phrase_timeout", default=4,
                         help="How much empty space between recordings before we "
                              "consider it a new line in the transcription.", type=float)
     if 'linux' in platform:
@@ -57,10 +57,6 @@ def record():
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
 
-    COHERE_KEY = os.getenv("COHERE_KEY")
-
-    cohere_ef = CohereEmbeddingFunction(
-        api_key=COHERE_KEY, model_name="large")
 
     collection = database_initialization_and_collection(cohere_ef)
 
@@ -105,6 +101,8 @@ def record():
         data_queue.put(data)
         global phrase_time
         phrase_time = datetime.utcnow()
+        byte_size = sum(len(item) for item in list(data_queue.queue))
+        print(byte_size)
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
@@ -151,8 +149,8 @@ def record():
                     wav_data = io.BytesIO(audio_data.get_wav_data())
                     with open(temp_file, 'w+b') as f:
                         f.write(wav_data.read())
-                    with open(TEMP_DIR + str(now) + ".wav", "wb") as f:
-                        f.write(wav_data.read())
+                    # with open(TEMP_DIR + str(now) + ".wav", "wb") as f:
+                    #     f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
                 sleep(0.25)
         except KeyboardInterrupt:
@@ -164,5 +162,5 @@ def record():
     print(transcription)
 
 
-if __name__ == "__main__":
-    record()
+# if __name__ == "__main__":
+#     record()
