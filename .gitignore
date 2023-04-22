@@ -1,0 +1,5 @@
+ENV/
+.chromadb
+.DS_Store
+.env
+
