@@ -19,6 +19,10 @@ from embeddings import insert_to_db
 
 phrase_time = None
 
+MAX_BYTE_SIZE = 1e7
+TEMP_DIR = ".note_files"
+
+
 def record():
     dotenv.load_dotenv()
     parser = argparse.ArgumentParser()
@@ -132,19 +136,20 @@ def record():
                     print(result)
 
                 text = result['text'].strip()
-                insert_to_db(collection, text,str(datetime.utcnow()),cohere_ef)
+                insert_to_db(collection, text, str(now), cohere_ef)
                 transcription.append(text)
                 print(text)
                 phrase_complete = False
                 last_sample = bytes()
 
-
             if not data_queue.empty():
                 # If enough time has passed between recordings, consider the phrase complete.
                 # Clear the current working audio buffer to start over with the new data.
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
-                    phrase_complete = True
 
+                byte_size = sum(len(item) for item in list(data_queue.queue))
+
+                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout) or byte_size >= MAX_BYTE_SIZE:
+                    phrase_complete = True
 
                     while not data_queue.empty():
                         data = data_queue.get()
@@ -154,6 +159,8 @@ def record():
                             last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
                         wav_data = io.BytesIO(audio_data.get_wav_data())
                         with open(temp_file, 'w+b') as f:
+                            f.write(wav_data.read())
+                        with open(TEMP_DIR + str(now) + ".wav", "wb") as f:
                             f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
                 sleep(0.25)
@@ -168,4 +175,3 @@ def record():
 
 if __name__ == "__main__":
     record()
-
