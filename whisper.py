@@ -16,11 +16,12 @@ from sys import platform
 import chromadb
 from chromadb.config import Settings
 from embeddings import insert_to_db
+from database import database_initialization_and_collection
 
 phrase_time = None
 
 MAX_BYTE_SIZE = 1e7
-TEMP_DIR = ".note_files"
+TEMP_DIR = ".note_files/"
 
 
 def record():
@@ -56,22 +57,12 @@ def record():
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
 
-    collection_name = "test_db"
-
     COHERE_KEY = os.getenv("COHERE_KEY")
-
-    chroma_settings = Settings(
-        chroma_db_impl="duckdb+parquet",
-        # Optional, defaults to .chromadb/ in the current directory
-        persist_directory=".chromadb"
-    )
-    chromadb_client = chromadb.Client(chroma_settings)
 
     cohere_ef = CohereEmbeddingFunction(
         api_key=COHERE_KEY, model_name="large")
 
-    collection = chromadb_client.get_or_create_collection(
-        collection_name, embedding_function=cohere_ef)
+    collection = database_initialization_and_collection(cohere_ef)
 
     # Important for linux users.
     # Prevents permanent application hang and crash by using the wrong Microphone
@@ -155,13 +146,13 @@ def record():
                         data = data_queue.get()
                         last_sample += data
 
-                        audio_data = sr.AudioData(
-                            last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
-                        wav_data = io.BytesIO(audio_data.get_wav_data())
-                        with open(temp_file, 'w+b') as f:
-                            f.write(wav_data.read())
-                        with open(TEMP_DIR + str(now) + ".wav", "wb") as f:
-                            f.write(wav_data.read())
+                    audio_data = sr.AudioData(
+                        last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                    wav_data = io.BytesIO(audio_data.get_wav_data())
+                    with open(temp_file, 'w+b') as f:
+                        f.write(wav_data.read())
+                    with open(TEMP_DIR + str(now) + ".wav", "wb") as f:
+                        f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
                 sleep(0.25)
         except KeyboardInterrupt:
