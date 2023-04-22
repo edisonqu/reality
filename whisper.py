@@ -74,7 +74,7 @@ def main():
 
     temp_file = NamedTemporaryFile(suffix='.wav').name
     # temp_file = "temp_file.wav"
-    transcription = ['']
+    transcription = []
 
     with source:
         recorder.adjust_for_ambient_noise(source)
@@ -87,6 +87,8 @@ def main():
         # Grab the raw bytes and push it into the thread safe queue.
         data = audio.get_raw_data()
         data_queue.put(data)
+        phrase_time = datetime.utcnow()
+        print("new phrasetime", phrase_time)
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
@@ -110,39 +112,24 @@ def main():
                 text = result['text'].strip()
                 transcription.append(text)
                 print(text)
+                phrase_complete = False
+                last_sample = bytes()
 
             if not data_queue.empty():
-                phrase_complete = False
                 # If enough time has passed between recordings, consider the phrase complete.
                 # Clear the current working audio buffer to start over with the new data.
                 if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
-                    last_sample = bytes()
                     phrase_complete = True
-                # This is the last time we received new audio data from the queue.
-                phrase_time = now
 
-                # Concatenate our current audio data with the latest audio data.
-                while not data_queue.empty():
-                    data = data_queue.get()
-                    last_sample += data
+                    while not data_queue.empty():
+                        data = data_queue.get()
+                        last_sample += data
 
-                # Use AudioData to convert the raw data to wav data.
-                audio_data = sr.AudioData(
-                    last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
-                wav_data = io.BytesIO(audio_data.get_wav_data())
-
-                # Write wav data to the temporary file as bytes.
-                if phrase_complete:
-                    with open(temp_file, 'w+b') as f:
-                        f.write(wav_data.read())
-
-                # Clear the console to reprint the updated transcription.
-                os.system('cls' if os.name == 'nt' else 'clear')
-                for line in transcription:
-                    print(line)
-                # Flush stdout.
-                print('', end='', flush=True)
-
+                        audio_data = sr.AudioData(
+                            last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                        wav_data = io.BytesIO(audio_data.get_wav_data())
+                        with open(temp_file, 'w+b') as f:
+                            f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
                 sleep(0.25)
         except KeyboardInterrupt:
