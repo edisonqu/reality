@@ -3,6 +3,7 @@
 import argparse
 import io
 import os
+from chromadb.utils.embedding_functions import CohereEmbeddingFunction
 import dotenv
 import speech_recognition as sr
 import openai
@@ -12,6 +13,9 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 from time import sleep
 from sys import platform
+
+import chromadb
+from chromadb.config import Settings
 
 
 def record():
@@ -48,6 +52,23 @@ def record():
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
 
+    collection_name = "test_db"
+
+    COHERE_KEY = os.getenv("COHERE_KEY")
+
+    chroma_settings = Settings(
+        chroma_db_impl="duckdb+parquet",
+        # Optional, defaults to .chromadb/ in the current directory
+        persist_directory=".chromadb"
+    )
+    chromadb_client = chromadb.Client(chroma_settings)
+
+    cohere_ef = CohereEmbeddingFunction(
+        api_key=COHERE_KEY, model_name="large")
+
+    collection = chromadb_client.get_or_create_collection(
+        collection_name, embedding_function=cohere_ef)
+
     # Important for linux users.
     # Prevents permanent application hang and crash by using the wrong Microphone
     if 'linux' in platform:
@@ -60,7 +81,8 @@ def record():
         else:
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
                 if mic_name in name:
-                    source = sr.Microphone(sample_rate=16000, device_index=index)
+                    source = sr.Microphone(
+                        sample_rate=16000, device_index=index)
                     break
     else:
         source = sr.Microphone(sample_rate=16000)
@@ -69,7 +91,7 @@ def record():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     record_timeout = args.record_timeout
     phrase_timeout = args.phrase_timeout
-    args.use_openai_api=True
+    args.use_openai_api = True
 
     temp_file = NamedTemporaryFile(suffix='.wav').name
     transcription = ['']
@@ -88,7 +110,8 @@ def record():
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
-    recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
+    recorder.listen_in_background(
+        source, record_callback, phrase_time_limit=record_timeout)
 
     # Cue the user that we're ready to go.
     print("Model loaded.\n")
@@ -113,7 +136,8 @@ def record():
                     last_sample += data
 
                 # Use AudioData to convert the raw data to wav data.
-                audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                audio_data = sr.AudioData(
+                    last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.
@@ -130,6 +154,7 @@ def record():
                 # Otherwise edit the existing one.
                 if phrase_complete:
                     transcription.append(text)
+
                 else:
                     transcription[-1] = text
 
@@ -149,6 +174,7 @@ def record():
     for line in transcription:
         print(line)
     print(transcription)
+
 
 if __name__ == "__main__":
     record()
