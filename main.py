@@ -54,7 +54,7 @@ def print_cool_colors(option):
     elif option == 2:
         print(colored("Here are all the data that we have about you", "green"))
         print(colored("Please give me a few seconds to get set up...", "blue"))
-        items = query_all(collection=database_initialization_and_collection(cohere_ef)).get('documents')
+        items = query_all(collection=collection).get('documents')
         print(colored("Here are all the conversations you heard today.", "green"))
         for item in items:
             print("--------------------------------------------------------------------------------------------------------------------------------")
@@ -64,7 +64,7 @@ def print_cool_colors(option):
         print(colored("Option 3: Recording Started", "yellow"))
         print(colored("Please give me a few seconds to get set up...", "blue"))
 
-        record(cohere_ef)
+        record(cohere_ef, collection)
 
     else:
         print(colored("Invalid option, input numbers only from 1-3.", "red"))

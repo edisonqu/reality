@@ -8,7 +8,7 @@ def insert_to_db(collection: Collection, text: str, timestamp: str, embedding_fu
     embeddings = embedding_function([text])
     ids = [timestamp]
     collection.add(documents=[text], embeddings=embeddings, ids=ids)
-    print(collection.count())
+    # print(collection.count())
 
 
 def query_db(collection: Collection, query_text: str, embedding_function: EmbeddingFunction, n_results=1):
@@ -24,5 +24,4 @@ def query_db(collection: Collection, query_text: str, embedding_function: Embedd
 def query_all(collection: Collection):
 
     results = collection.get()
-    # print(results)
     return results

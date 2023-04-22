@@ -24,7 +24,7 @@ MAX_BYTE_SIZE = 1e7
 TEMP_DIR = ".note_files/"
 
 
-def record(cohere_ef):
+def record(cohere_ef,collection):
     dotenv.load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="medium", help="Model to use",
@@ -37,7 +37,7 @@ def record(cohere_ef):
                         help="Energy level for mic to detect.", type=int)
     parser.add_argument("--record_timeout", default=6,
                         help="How real time the recording is in seconds.", type=float)
-    parser.add_argument("--phrase_timeout", default=4,
+    parser.add_argument("--phrase_timeout", default=6,
                         help="How much empty space between recordings before we "
                              "consider it a new line in the transcription.", type=float)
     if 'linux' in platform:
@@ -56,9 +56,6 @@ def record(cohere_ef):
     recorder.energy_threshold = args.energy_threshold
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
-
-
-    collection = database_initialization_and_collection(cohere_ef)
 
     # Important for linux users.
     # Prevents permanent application hang and crash by using the wrong Microphone
@@ -102,7 +99,6 @@ def record(cohere_ef):
         global phrase_time
         phrase_time = datetime.utcnow()
         byte_size = sum(len(item) for item in list(data_queue.queue))
-        print(byte_size)
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
@@ -137,7 +133,7 @@ def record(cohere_ef):
 
                 byte_size = sum(len(item) for item in list(data_queue.queue))
 
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout) or byte_size >= MAX_BYTE_SIZE:
+                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                     phrase_complete = True
 
                     while not data_queue.empty():
