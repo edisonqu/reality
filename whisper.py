@@ -25,9 +25,9 @@ def main():
                         help="Using OPENAI_API_KEY enviromental variable")
     parser.add_argument("--energy_threshold", default=1000,
                         help="Energy level for mic to detect.", type=int)
-    parser.add_argument("--record_timeout", default=2,
+    parser.add_argument("--record_timeout", default=6,
                         help="How real time the recording is in seconds.", type=float)
-    parser.add_argument("--phrase_timeout", default=3,
+    parser.add_argument("--phrase_timeout", default=15,
                         help="How much empty space between recordings before we "
                              "consider it a new line in the transcription.", type=float)
     if 'linux' in platform:
@@ -69,6 +69,7 @@ def main():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     record_timeout = args.record_timeout
     phrase_timeout = args.phrase_timeout
+    args.use_openai_api=True
 
     temp_file = NamedTemporaryFile(suffix='.wav').name
     transcription = ['']
@@ -121,6 +122,8 @@ def main():
 
                 with open(temp_file, 'rb') as f:
                     result = openai.Audio.transcribe("whisper-1", f)
+                    print(result)
+
                 text = result['text'].strip()
 
                 # If we detected a pause between recordings, add a new item to our transcripion.
@@ -145,7 +148,7 @@ def main():
     print("\n\nTranscription:")
     for line in transcription:
         print(line)
-
+    print(transcription)
 
 if __name__ == "__main__":
     main()
