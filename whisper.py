@@ -15,6 +15,7 @@ from time import sleep
 from sys import platform
 import chromadb
 from chromadb.config import Settings
+from embeddings import insert_to_db
 
 phrase_time = None
 
@@ -131,6 +132,7 @@ def record():
                     print(result)
 
                 text = result['text'].strip()
+                insert_to_db(collection, text,str(datetime.utcnow()),cohere_ef)
                 transcription.append(text)
                 print(text)
                 phrase_complete = False
@@ -154,7 +156,7 @@ def record():
                         with open(temp_file, 'w+b') as f:
                             f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
-                sleep(3)
+                sleep(0.25)
         except KeyboardInterrupt:
             break
 
