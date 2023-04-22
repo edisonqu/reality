@@ -14,7 +14,7 @@ from time import sleep
 from sys import platform
 
 
-def main():
+def record():
     dotenv.load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="medium", help="Model to use",
@@ -151,4 +151,4 @@ def main():
     print(transcription)
 
 if __name__ == "__main__":
-    main()
+    record()
