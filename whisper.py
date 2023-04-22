@@ -72,8 +72,8 @@ def main():
     phrase_timeout = args.phrase_timeout
     args.use_openai_api = True
 
-    # temp_file = NamedTemporaryFile(suffix='.wav').name
-    temp_file = "temp_file.wav"
+    temp_file = NamedTemporaryFile(suffix='.wav').name
+    # temp_file = "temp_file.wav"
     transcription = ['']
 
     with source:
@@ -132,14 +132,9 @@ def main():
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.
-                with open(temp_file, 'w+b') as f:
-                    f.write(wav_data.read())
-
-                with open(temp_file, 'rb') as f:
-                    result = openai.Audio.transcribe("whisper-1", f)
-                    print(result)
-
-                text = result['text'].strip()
+                if phrase_complete:
+                    with open(temp_file, 'w+b') as f:
+                        f.write(wav_data.read())
 
                 # Clear the console to reprint the updated transcription.
                 os.system('cls' if os.name == 'nt' else 'clear')
