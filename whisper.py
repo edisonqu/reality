@@ -13,10 +13,10 @@ from queue import Queue
 from tempfile import NamedTemporaryFile
 from time import sleep
 from sys import platform
-
 import chromadb
 from chromadb.config import Settings
 
+phrase_time = None
 
 def record():
     dotenv.load_dotenv()
@@ -41,7 +41,6 @@ def record():
     args = parser.parse_args()
 
     # The last time a recording was retreived from the queue.
-    phrase_time = None
     # Current raw audio bytes.
     last_sample = bytes()
     # Thread safe Queue for passing data from the threaded recording callback.
@@ -94,7 +93,8 @@ def record():
     args.use_openai_api = True
 
     temp_file = NamedTemporaryFile(suffix='.wav').name
-    transcription = ['']
+    # temp_file = "temp_file.wav"
+    transcription = []
 
     with source:
         recorder.adjust_for_ambient_noise(source)
@@ -107,6 +107,8 @@ def record():
         # Grab the raw bytes and push it into the thread safe queue.
         data = audio.get_raw_data()
         data_queue.put(data)
+        global phrase_time
+        phrase_time = datetime.utcnow()
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
@@ -116,57 +118,43 @@ def record():
     # Cue the user that we're ready to go.
     print("Model loaded.\n")
 
+    phrase_complete = False
+
     while True:
         try:
             now = datetime.utcnow()
             # Pull raw recorded audio from the queue.
-            if not data_queue.empty():
-                phrase_complete = False
-                # If enough time has passed between recordings, consider the phrase complete.
-                # Clear the current working audio buffer to start over with the new data.
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
-                    last_sample = bytes()
-                    phrase_complete = True
-                # This is the last time we received new audio data from the queue.
-                phrase_time = now
 
-                # Concatenate our current audio data with the latest audio data.
-                while not data_queue.empty():
-                    data = data_queue.get()
-                    last_sample += data
-
-                # Use AudioData to convert the raw data to wav data.
-                audio_data = sr.AudioData(
-                    last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
-                wav_data = io.BytesIO(audio_data.get_wav_data())
-
-                # Write wav data to the temporary file as bytes.
-                with open(temp_file, 'w+b') as f:
-                    f.write(wav_data.read())
-
+            if phrase_complete:
                 with open(temp_file, 'rb') as f:
                     result = openai.Audio.transcribe("whisper-1", f)
                     print(result)
 
                 text = result['text'].strip()
+                transcription.append(text)
+                print(text)
+                phrase_complete = False
+                last_sample = bytes()
 
-                # If we detected a pause between recordings, add a new item to our transcripion.
-                # Otherwise edit the existing one.
-                if phrase_complete:
-                    transcription.append(text)
 
-                else:
-                    transcription[-1] = text
+            if not data_queue.empty():
+                # If enough time has passed between recordings, consider the phrase complete.
+                # Clear the current working audio buffer to start over with the new data.
+                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                    phrase_complete = True
 
-                # Clear the console to reprint the updated transcription.
-                os.system('cls' if os.name == 'nt' else 'clear')
-                for line in transcription:
-                    print(line)
-                # Flush stdout.
-                print('', end='', flush=True)
 
+                    while not data_queue.empty():
+                        data = data_queue.get()
+                        last_sample += data
+
+                        audio_data = sr.AudioData(
+                            last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+                        wav_data = io.BytesIO(audio_data.get_wav_data())
+                        with open(temp_file, 'w+b') as f:
+                            f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
-                sleep(0.25)
+                sleep(3)
         except KeyboardInterrupt:
             break
 
@@ -178,3 +166,4 @@ def record():
 
 if __name__ == "__main__":
     record()
+
