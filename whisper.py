@@ -13,6 +13,7 @@ from tempfile import NamedTemporaryFile
 from time import sleep
 from sys import platform
 
+phrase_time = None
 
 def main():
     dotenv.load_dotenv()
@@ -37,7 +38,6 @@ def main():
     args = parser.parse_args()
 
     # The last time a recording was retreived from the queue.
-    phrase_time = None
     # Current raw audio bytes.
     last_sample = bytes()
     # Thread safe Queue for passing data from the threaded recording callback.
@@ -87,8 +87,8 @@ def main():
         # Grab the raw bytes and push it into the thread safe queue.
         data = audio.get_raw_data()
         data_queue.put(data)
+        global phrase_time
         phrase_time = datetime.utcnow()
-        print("new phrasetime", phrase_time)
 
     # Create a background thread that will pass us raw audio bytes.
     # We could do this manually but SpeechRecognizer provides a nice helper.
@@ -131,7 +131,7 @@ def main():
                         with open(temp_file, 'w+b') as f:
                             f.write(wav_data.read())
                 # Infinite loops are bad for processors, must sleep.
-                sleep(0.25)
+                sleep(3)
         except KeyboardInterrupt:
             break
 
