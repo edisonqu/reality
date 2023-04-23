@@ -36,8 +36,8 @@ def record(cohere_ef,collection):
     parser.add_argument("--energy_threshold", default=1000,
                         help="Energy level for mic to detect.", type=int)
     parser.add_argument("--record_timeout", default=6,
-                        help="How real time the recording is in seconds.", type=float)
-    parser.add_argument("--phrase_timeout", default=6,
+                        help="How real time the recording is in seconds .", type=float)
+    parser.add_argument("--phrase_timeout", default=10,
                         help="How much empty space between recordings before we "
                              "consider it a new line in the transcription.", type=float)
     if 'linux' in platform:
@@ -81,7 +81,7 @@ def record(cohere_ef,collection):
     phrase_timeout = args.phrase_timeout
     args.use_openai_api = True
 
-    temp_file = NamedTemporaryFile(suffix='.wav').name
+    temp_file = NamedTemporaryFile(suffix='.mp3').name
     # temp_file = "temp_file.wav"
     transcription = []
 
@@ -116,6 +116,7 @@ def record(cohere_ef,collection):
             # Pull raw recorded audio from the queue.
 
             if phrase_complete:
+                print('PHRASE COMPLETE. TRANSCRIBING...')
                 with open(temp_file, 'rb') as f:
                     result = openai.Audio.transcribe("whisper-1", f)
                     print(result)
@@ -132,7 +133,7 @@ def record(cohere_ef,collection):
                 # Clear the current working audio buffer to start over with the new data.
 
                 byte_size = sum(len(item) for item in list(data_queue.queue))
-
+                # print(byte_size)
                 if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                     phrase_complete = True
 
