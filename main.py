@@ -52,10 +52,10 @@ def print_cool_colors(option):
         print(completion.choices[0].message.content)
 
     elif option == 2:
-        print(colored("Here are all the data that we have about you", "green"))
         print(colored("Please give me a few seconds to get set up...", "blue"))
         items = query_all(collection=collection).get('documents')
         print(colored("Here are all the conversations you heard today.", "green"))
+        print()
         for item in items:
             print("--------------------------------------------------------------------------------------------------------------------------------")
             print(item)
@@ -66,15 +66,37 @@ def print_cool_colors(option):
 
         record(cohere_ef, collection)
 
+    elif option == 4:
+        print(colored("Please give me a few seconds to get set up...", "blue"))
+
+        question = input("Ask it on the command line here --> ")
+        queries = int(input("How many results do you want? --> "))
+
+        response = (
+            query_db(collection=collection, query_text=question, embedding_function=cohere_ef, n_results=queries))
+        # print(response)
+        related_text = response.get('documents')[0]
+        time = response.get('ids')[0]
+        lowest_distance = response.get("distances")[0]
+
+        for i in range(len(related_text)):
+            print(colored(f"SEARCH RESPONSE #{i + 1}", 'blue'))
+            print(colored(f"Found related text:", 'green'))
+            print(related_text[i], "with a distance score of ", lowest_distance[i], "and was generated on", time[i])
     else:
         print(colored("Invalid option, input numbers only from 1-3.", "red"))
 
 def main():
     print("Welcome to your second brain! This program runs throughout, here are your current options")
+    print()
     print(colored("Option 1: Ask questions to your brain database right now:", "red"))
+    print()
     print(colored("Option 2: See your brain database", "green"))
+    print()
     print(colored("Option 3: Start Recording", "yellow"))
-    # print(colored("Option 4: Blue", "blue"))
+    print()
+    print(colored("Option 4: Search your brain database", "blue"))
+    print()
 
     try:
         user_input = int(input("Enter your choice: "))
