@@ -1,4 +1,5 @@
 import os
+import queue
 from queue import Queue
 import threading
 
@@ -14,7 +15,7 @@ class Recorder:
         output_dir: str,
         sample_rate: int = 16000,
         group_silence_duration: float = 10.0,
-        phrase_time_limit: float | None = None,
+        phrase_time_limit: "int | None" = None,
         energy_threshold: int = 1000,
     ) -> None:
 
@@ -51,26 +52,29 @@ class Recorder:
 
     def process_audio(self) -> None:
         while not self.stop_processing:
-            audio = self.audio_queue.get()
+            try:
+                audio = self.audio_queue.get(timeout=1)
 
-            if audio is None:
-                self.group_id = None
-                self.item_id = 0
-            else:
-                self.processing_queue.put(audio)
+                if audio is None:
+                    self.group_id = None
+                    self.item_id = 0
+                else:
+                    self.processing_queue.put(audio)
 
-            while not self.processing_queue.empty():
-                if self.group_id is None:
-                    self.group_id = datetime.utcnow()
+                while not self.processing_queue.empty():
+                    if self.group_id is None:
+                        self.group_id = datetime.utcnow()
 
-                audio = self.processing_queue.get()
-                item_id = str(self.item_id)
-                file_name = f"{self.group_id}_{item_id}.mp3"
-                file_path = os.path.join(self.output_dir, file_name)
-                with open(file_path, "wb") as f:
-                    f.write(audio.get_wav_data())
-                self.item_id += 1
-            sleep(0.1)
+                    audio = self.processing_queue.get()
+                    item_id = str(self.item_id)
+                    file_name = f"{self.group_id}_{item_id}.mp3"
+                    file_path = os.path.join(self.output_dir, file_name)
+                    with open(file_path, "wb") as f:
+                        f.write(audio.get_wav_data())
+                    self.item_id += 1
+                sleep(0.1)
+            except queue.Empty:
+                continue
 
     def record_callback(self, _, audio: sr.AudioData) -> None:
 
@@ -94,7 +98,7 @@ class Recorder:
     def stop(self) -> None:
 
         self.stop_processing = True
-        self.background_listener(wait_for_stop=False)
+        self.background_listener(wait_for_stop=True)
         self.processing_thread.join()
 
 
