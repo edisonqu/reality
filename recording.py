@@ -79,7 +79,11 @@ class Recorder:
     def record_callback(self, _, audio: sr.AudioData) -> None:
 
         now = datetime.utcnow()
-        if self.new_group(now):
+        num_samples = len(audio.get_wav_data()) // audio.sample_width
+        duration = num_samples / float(audio.sample_rate)
+
+        adj_time = now - timedelta(seconds=duration)
+        if self.new_group(adj_time):
             self.audio_queue.put(None)
 
         self.audio_queue.put(audio)
@@ -90,7 +94,9 @@ class Recorder:
         if self.last_recorded_audio is None:
             return True
 
-        if now - self.last_recorded_audio >= timedelta(seconds=self.group_silence_duration):
+        elapsed = now - self.last_recorded_audio
+
+        if elapsed >= timedelta(seconds=self.group_silence_duration):
             return True
 
         return False
