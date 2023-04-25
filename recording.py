@@ -28,9 +28,9 @@ class Recorder:
         self.item_id = 0
         self.group_silence_duration = group_silence_duration
         self.last_recorded_audio = None
+        self.microphone = sr.Microphone(sample_rate=sample_rate)
         self.recognizer = self.setup_recognizer(
             energy_threshold=energy_threshold)
-        self.microphone = sr.Microphone(sample_rate=sample_rate)
         self.audio_queue = Queue()
         self.processing_queue = Queue()
         self.processing_thread = threading.Thread(
@@ -42,6 +42,7 @@ class Recorder:
         recorder = sr.Recognizer()
         recorder.energy_threshold = energy_threshold
         recorder.dynamic_energy_threshold = False
+        recorder.adjust_for_ambient_noise(self.microphone)
 
         return recorder
 
