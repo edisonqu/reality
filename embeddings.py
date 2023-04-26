@@ -21,6 +21,7 @@ def query_db(collection: Collection, query_text: str, embedding_function: Embedd
     )
     return results
 
+
 def query_all(collection: Collection):
 
     results = collection.get()
