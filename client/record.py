@@ -15,7 +15,7 @@ class Recorder:
         output_dir: str,
         sample_rate: int = 16000,
         group_silence_duration: float = 10.0,
-        phrase_time_limit: "int | None" = None,
+        phrase_time_limit: "int | None" = 5,
         energy_threshold: int = 1500,
     ) -> None:
 

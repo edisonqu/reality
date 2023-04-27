@@ -1,15 +1,42 @@
 const { PythonShell } = require('python-shell');
 const { ipcRenderer } = require('electron');
 const path = require('path');
+const { ChromaClient } = require('chromadb');
+const { CohereEmbeddingFunction } = require('chromadb');
+
+require('dotenv').config();
+
+const embedder = new CohereEmbeddingFunction(process.env.CO_API_KEY);
 
 const runScriptButton = document.getElementById('runScript');
 const stopScriptButton = document.getElementById('stopScript'); // Add this line
-const outputElement = document.getElementById('output');
+const outputElement = document.getElementById('output_database');
+
 
 let pyshell;
 
-function getScriptPath(scriptName) {
-    return path.join(__dirname, scriptName);
+// "/Users/edison/PycharmProjects/reality/.chromadb"
+const client = new ChromaClient("http://localhost:8000");
+
+async function addToCollection() {
+      outputElement.innerHTML =""
+
+    const addText = document.getElementById('addToDatabase').value;
+
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    // const text_embedding = await embedder.generate(["I love water"])
+    // console.log(text_embedding[0])
+    const now = new Date();
+
+    let addToTheCollection  = await collection.add(
+    [now],
+    undefined,
+    undefined,
+    [addText])
+
+    console.log(addToTheCollection)
+  outputElement.innerHTML += addToTheCollection + '\n';
+
 }
 
 function record() {
@@ -18,7 +45,17 @@ function record() {
         console.log(message);
     });
 }
+async function fetchAll(){
+      outputElement.innerHTML = ''
 
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    
+    results = await collection.get()
+  console.log(results);
+  outputElement.innerHTML += results.documents + '\n'
+
+
+}
 ipcRenderer.on('app-before-quit', () => {
     console.log(pyshell)
   if (pyshell) {
@@ -44,11 +81,53 @@ function stopScript() {
     }
 }
 
-// Run the print_hello.py script when the app starts
-record();
+async function queryCollection(collection) {
+  outputElement.innerHTML = ''
 
-// Run the print_numbers.py script when the button is clicked
-runScriptButton.addEventListener('click', runPrintNumbers);
+  const queryText = document.getElementById('queryText').value;
+  if (!queryText) {
+    alert('Please enter a query text.');
+    return;
+  }
+  const text_embedding = await embedder.generate([queryText])
+    console.log(text_embedding)
+    const results = await collection.query(
+    [text_embedding[0]],
+    1,
+    undefined,
+    [queryText],
+)
+
+  console.log(results);
+  outputElement.innerHTML += results.distances + '\n';
+  outputElement.innerHTML += results.documents + '\n';
+
+
+}
+
+// record();
+
+runScriptButton.addEventListener('click', addToCollection);
 
 // Stop the script when the stop button is clicked
 stopScriptButton.addEventListener('click', stopScript); // Add this line
+document.getElementById('queryBtn').addEventListener('click', async () => {
+let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
+  if (collection) {
+    await queryCollection(collection);
+  }
+});
+
+document.getElementById('addDB').addEventListener('click', async () => {
+let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
+  if (collection) {
+    await addToCollection();
+  }
+});
+
+document.getElementById('fetchAll').addEventListener('click', async () => {
+let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
+  if (collection) {
+    await fetchAll();
+  }
+});
