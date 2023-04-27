@@ -18,8 +18,8 @@ class Recorder:
         whisper_model_path: str,
         sample_rate: int = 16000,
         group_silence_duration: float = 10.0,
-        phrase_time_limit: "int | None" = 10,
-        batch_length: float = 20.0,
+        phrase_time_limit: "int | None" = 30,
+        batch_length: float = 120.0,
         energy_threshold: int = 1000,
     ) -> None:
 
