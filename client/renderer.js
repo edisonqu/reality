@@ -1,8 +1,8 @@
-const { PythonShell } = require('python-shell');
-const { ipcRenderer } = require('electron');
+const {PythonShell} = require('python-shell');
+const {ipcRenderer} = require('electron');
 const path = require('path');
-const { ChromaClient } = require('chromadb');
-const { CohereEmbeddingFunction } = require('chromadb');
+const {ChromaClient} = require('chromadb');
+const {CohereEmbeddingFunction} = require('chromadb');
 
 require('dotenv').config();
 
@@ -20,7 +20,7 @@ let pyshell;
 const client = new ChromaClient("http://localhost:8000");
 
 async function addToCollection() {
-      outputElement.innerHTML =""
+    outputElement.innerHTML = ""
 
     const addText = document.getElementById('addToDatabase').value;
 
@@ -29,14 +29,14 @@ async function addToCollection() {
     // console.log(text_embedding[0])
     const now = new Date();
 
-    let addToTheCollection  = await collection.add(
-    [now],
-    undefined,
-    undefined,
-    [addText])
+    let addToTheCollection = await collection.add(
+        [now],
+        undefined,
+        undefined,
+        [addText])
 
     console.log(addToTheCollection)
-  outputElement.innerHTML += addToTheCollection + '\n';
+    outputElement.innerHTML += addToTheCollection + '\n';
 
 }
 
@@ -46,27 +46,29 @@ function record() {
         console.log(message);
     });
 }
-async function fetchAll(){
-      outputElement.innerHTML = ''
+
+async function fetchAll() {
+    outputElement.innerHTML = ''
 
     let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
-    
+
     results = await collection.get()
-  console.log(results);
-  outputElement.innerHTML += results.documents + '\n'
+    console.log(results);
+    outputElement.innerHTML += results.documents + '\n'
 }
 
-async function resetDatabase(){
-  outputElement.innerHTML = ''
+async function resetDatabase() {
+    outputElement.innerHTML = ''
     results = await client.reset()
-  console.log(results);
-  outputElement.innerHTML += "Database is reset" + '\n'
+    console.log(results);
+    outputElement.innerHTML += "Database is reset" + '\n'
 }
+
 ipcRenderer.on('app-before-quit', () => {
     console.log(pyshell)
-  if (pyshell) {
-    pyshell.terminate();
-  }
+    if (pyshell) {
+        pyshell.terminate();
+    }
 });
 
 // Function to run the print_numbers.py script
@@ -88,25 +90,25 @@ function stopScript() {
 }
 
 async function queryCollection(collection) {
-  outputElement.innerHTML = ''
+    outputElement.innerHTML = ''
 
-  const queryText = document.getElementById('queryText').value;
-  if (!queryText) {
-    alert('Please enter a query text.');
-    return;
-  }
-  const text_embedding = await embedder.generate([queryText])
+    const queryText = document.getElementById('queryText').value;
+    if (!queryText) {
+        alert('Please enter a query text.');
+        return;
+    }
+    const text_embedding = await embedder.generate([queryText])
     console.log(text_embedding)
     const results = await collection.query(
-    [text_embedding[0]],
-    1,
-    undefined,
-    [queryText],
-)
+        [text_embedding[0]],
+        1,
+        undefined,
+        [queryText],
+    )
 
-  console.log(results);
-  outputElement.innerHTML += results.distances + '\n';
-  outputElement.innerHTML += results.documents + '\n';
+    console.log(results);
+    outputElement.innerHTML += results.distances + '\n';
+    outputElement.innerHTML += results.documents + '\n';
 
 
 }
@@ -119,31 +121,30 @@ runScriptButton.addEventListener('click', addToCollection);
 stopScriptButton.addEventListener('click', stopScript);
 
 
-
 document.getElementById('queryBtn').addEventListener('click', async () => {
-let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
-  if (collection) {
-    await queryCollection(collection);
-  }
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    if (collection) {
+        await queryCollection(collection);
+    }
 });
 
 document.getElementById('addDB').addEventListener('click', async () => {
-let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
-  if (collection) {
-    await addToCollection();
-  }
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    if (collection) {
+        await addToCollection();
+    }
 });
 
 document.getElementById('fetchAll').addEventListener('click', async () => {
-let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
-  if (collection) {
-    await fetchAll();
-  }
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    if (collection) {
+        await fetchAll();
+    }
 });
 
 document.getElementById('reset').addEventListener('click', async () => {
-let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
-  if (collection) {
-    await resetDatabase();
-  }
+    let collection = await client.getOrCreateCollection("testing_db", undefined, embedder)
+    if (collection) {
+        await resetDatabase();
+    }
 });
