@@ -8,14 +8,15 @@ require('dotenv').config();
 
 const embedder = new CohereEmbeddingFunction(process.env.CO_API_KEY);
 
+// For the Python Scripts (to run and to stop)
 const runScriptButton = document.getElementById('runScript');
-const stopScriptButton = document.getElementById('stopScript'); // Add this line
+const stopScriptButton = document.getElementById('stopScript');
+
+// Database output
 const outputElement = document.getElementById('output_database');
-
-
 let pyshell;
 
-// "/Users/edison/PycharmProjects/reality/.chromadb"
+// Connects to Docker when loaded
 const client = new ChromaClient("http://localhost:8000");
 
 async function addToCollection() {
@@ -53,8 +54,13 @@ async function fetchAll(){
     results = await collection.get()
   console.log(results);
   outputElement.innerHTML += results.documents + '\n'
+}
 
-
+async function resetDatabase(){
+  outputElement.innerHTML = ''
+    results = await client.reset()
+  console.log(results);
+  outputElement.innerHTML += "Database is reset" + '\n'
 }
 ipcRenderer.on('app-before-quit', () => {
     console.log(pyshell)
@@ -110,7 +116,10 @@ async function queryCollection(collection) {
 runScriptButton.addEventListener('click', addToCollection);
 
 // Stop the script when the stop button is clicked
-stopScriptButton.addEventListener('click', stopScript); // Add this line
+stopScriptButton.addEventListener('click', stopScript);
+
+
+
 document.getElementById('queryBtn').addEventListener('click', async () => {
 let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
   if (collection) {
@@ -129,5 +138,12 @@ document.getElementById('fetchAll').addEventListener('click', async () => {
 let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
   if (collection) {
     await fetchAll();
+  }
+});
+
+document.getElementById('reset').addEventListener('click', async () => {
+let collection = await client.getOrCreateCollection("testing_db",undefined, embedder)
+  if (collection) {
+    await resetDatabase();
   }
 });
